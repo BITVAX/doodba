@@ -16,9 +16,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 DIR = dirname(__file__)
 ODOO_PREFIX = ("odoo", "--stop-after-init", "--workers=0")
-ODOO_VERSIONS = frozenset(
-    environ.get("DOCKER_TAG", "7.0 8.0 9.0 10.0 11.0 12.0 13.0 14.0").split()
-)
+ODOO_VERSIONS = frozenset(environ.get("DOCKER_TAG", "9.0 10.0 11.0 12.0 13.0 14.0 15.0").split())
 PG_VERSIONS = frozenset(environ.get("PG_VERSIONS", "13").split())
 SCAFFOLDINGS_DIR = join(DIR, "scaffoldings")
 GEIOP_CREDENTIALS_PROVIDED = environ.get("GEOIP_LICENSE_KEY", False) and environ.get(
@@ -30,7 +28,7 @@ GEIOP_CREDENTIALS_PROVIDED = environ.get("GEOIP_LICENSE_KEY", False) and environ
 # preparing the pre-release for the next version of Odoo, which hasn't been
 # released yet.
 prerelease_skip = unittest.skipIf(
-    ODOO_VERSIONS == {"14.0"}, "Tests not supported in pre-release"
+    ODOO_VERSIONS & {"14.0", "15.0"}, "Tests not supported in pre-release"
 )
 
 
@@ -154,8 +152,6 @@ class ScaffoldingCase(unittest.TestCase):
                 ("bash", "-xc", 'test -z "$(addons list -p)"'),
                 ("bash", "-xc", 'test "$(addons list -c)" == crm,sale'),
             )
-        # Skip Odoo versions that don't support __manifest__.py files
-        for sub_env in matrix(odoo_skip={"7.0", "8.0", "9.0"}):
             self.compose_test(
                 project_dir,
                 dict(sub_env, DBNAME="prod"),
@@ -243,7 +239,7 @@ class ScaffoldingCase(unittest.TestCase):
             ("preparedb",),
             ("./custom/scripts/test_ir_config_parameters.py",),
         )
-        for sub_env in matrix(odoo_skip={"7.0", "8.0", "9.0"}):
+        for sub_env in matrix(odoo_skip={"9.0"}):
             self.compose_test(folder, sub_env, *commands)
 
     def test_smallest(self):
@@ -298,11 +294,11 @@ class ScaffoldingCase(unittest.TestCase):
             ("bash", "-xc", "! geoipupdate"),
         )
         smallest_dir = join(SCAFFOLDINGS_DIR, "smallest")
-        for sub_env in matrix(odoo_skip={"7.0", "8.0"}):
+        for sub_env in matrix():
             self.compose_test(
                 smallest_dir, sub_env, *commands, ("python", "-c", "import watchdog")
             )
-        for sub_env in matrix(odoo={"8.0"}):
+        for sub_env in matrix():
             self.compose_test(
                 smallest_dir,
                 sub_env,
@@ -318,7 +314,7 @@ class ScaffoldingCase(unittest.TestCase):
         """Test environment variables in addons.yaml"""
         # Old versions are skiped because they don't support __manifest__.py,
         # and the test is hacking ODOO_VERSION to pin a commit
-        for sub_env in matrix(odoo_skip={"7.0", "8.0", "9.0"}):
+        for sub_env in matrix(odoo_skip={"9.0"}):
             self.compose_test(
                 join(SCAFFOLDINGS_DIR, "addons_env"),
                 sub_env,
@@ -344,7 +340,7 @@ class ScaffoldingCase(unittest.TestCase):
         )
         # Old versions are skiped because they don't support __manifest__.py,
         # and the test is hacking ODOO_VERSION to pin a commit
-        for sub_env in matrix(odoo_skip={"7.0", "8.0", "9.0"}):
+        for sub_env in matrix(odoo_skip={"9.0"}):
             self.compose_test(
                 join(SCAFFOLDINGS_DIR, "addons_env_double"),
                 dict(sub_env, DOODBA_ENVIRONMENT="test"),
@@ -407,7 +403,7 @@ class ScaffoldingCase(unittest.TestCase):
     def test_dependencies(self):
         """Test dependencies installation."""
         dependencies_dir = join(SCAFFOLDINGS_DIR, "dependencies")
-        for sub_env in matrix(odoo_skip={"7.0"}):
+        for sub_env in matrix():
             self.compose_test(
                 dependencies_dir,
                 sub_env,
